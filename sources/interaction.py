@@ -245,6 +245,8 @@ class Interaction:
             collected.append(text)
             pretty_print(f"Heard: {text}", color="info")
 
+            if text.lower() in EXIT_PHRASES:
+                return None
             if self._has_confirmation(text):
                 break
 
@@ -257,7 +259,8 @@ class Interaction:
     def get_user(self) -> str:
         """Get the user input from the microphone or the keyboard."""
         if self.stt_enabled:
-            query = "TTS transcription of user: " + self.transcription_job()
+            transcript = self.transcription_job()
+            query = None if transcript is None else "TTS transcription of user: " + transcript
         else:
             query = self.read_stdin()
         if query is None:
@@ -287,6 +290,8 @@ class Interaction:
             push_last_agent_memory = True
         tmp = self.last_answer
         self.current_agent = agent
+        # The stop flag must be reset before each new request. Otherwise, if /stop was used previously, every subsequent request will fail
+        agent.stop = False
         self.is_generating = True
         try:
             self.last_answer, self.last_reasoning = await agent.process(self.last_query, self.speech)
